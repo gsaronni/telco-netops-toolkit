@@ -1,77 +1,54 @@
 # Changelog
 
-All notable changes to the Network Automation Toolkit are documented here.
+Changes per tool, taken from the version notes in each script's header.
+
+## Repository
+
+### Unreleased
+- Added the MIT LICENSE file.
+- Removed the Dockerfile, Compose file and .dockerignore: the backup tool needs a desktop session for its PyQt5 window and writes to a hard-coded Windows path, so the container could not run it.
+- README, changelog and code comments rewritten to match the code.
 
 ## Network Backup Orchestrator
 
 ### [5.0] - 2023-09-08
-**Production Stable Release**
-- Fixed ISE timing issues with sleep delays for slow CLI responses
-- Improved error handling with try-catch blocks per device
-- Added connection timeout configuration (90s default)
-- Enhanced logging with structured output messages
+- Fixed ISE timing issues with a wait after each command, for slow CLI responses.
 
 ### [4.9] - 2023-07-14
-- Removed GUI dependency for headless operation
-- Added password validation
-- Improved credential handling
+- Added password validation.
 
 ### [4.8] - 2023-06-26
-- Added Ctrl+C exception handling for graceful shutdown
-- Fixed devices with slow CLI response times
-- Enhanced error messages for connection failures
+- Added Ctrl+C exception handling.
+- Fixed devices with slow CLI response.
 
 ### [4.7] - 2023-01-20
-- Auto-discover username from environment variables
-- Fixed ASR900 timing issues with `send_command_timing` method
-- Improved NetMiko compatibility
+- User name taken from the environment.
+- Fixed ASR900 timing issues with `send_command_timing`.
 
-### [3.0] - 2021
-**Major Feature Release**
-- Implemented ASA multi-context backup support
-- Added context iteration (SYSTEM, MGMT, DMZ, BACKEND, FRONTEND)
-- Solved complex partition logic for virtual firewall contexts
+Versions between 1.0 and 4.7 were not recorded.
 
-### [2.0] - 2021
-- Added multi-vendor support (Cisco Nexus, IOS, ASR)
-- Unified command interface across device types
-- Improved error handling
-
-### [1.0] - 2020
-**Initial Release**
-- Basic single-vendor backup functionality
-- Manual credential input
-- Local file storage
-
----
+### [1.0] - 2022-04-05
+- Initial release.
 
 ## F5 BigIP Patching Automation
 
-### [1.6] - 2022
-**Production Stable Release**
-- Handles 3 patching scenarios (Windows/Linux/Firewall)
-- Manages 30+ nodes across 3 partitions (BE-PRO, BE-OMT, FE-DMZ)
-- Interactive partition selection
-- Bulk enable/disable operations via tmsh API
-- Production-hardened error handling
+### [1.6] - 2025-10-22
+- Non-interactive mode: scenario and action as two arguments, for cron.
 
-### Evolution Notes
-- **2020-2022**: Iterative improvements based on monthly maintenance windows
-- **Key learning**: Simple bash + tmsh CLI outperformed complex REST API approaches for this use case
-- **Impact**: Eliminated 18+ months of manual patching errors
+### [1.5] - 2025-09-30
+- Comments and formatting.
 
----
+### [1.4] - 2022-08-01
+- Completed the T71, T72 and T73 workflows.
 
-## Roadmap
+### [1.3] - 2022-08-01
+- Support for all three patching scenarios.
 
-### Planned - Q2 2024
-- [ ] Migrate F5 automation to Ansible playbook
-- [ ] Add pytest suite for Python backup tool
-- [ ] Containerize Python tool with Docker
-- [ ] GitHub Actions CI/CD pipeline
+### [0.1.2] - 2022-07-28
+- Refactored the list and disable command logic.
 
-### Under Consideration
-- [ ] Terraform integration for infrastructure provisioning
-- [ ] HashiCorp Vault for secrets management
-- [ ] Prometheus metrics export
-- [ ] Multi-threaded backup execution
+### [0.1.1] - 2022-07-28
+- Loops instead of repeated commands.
+
+### [0.1.0] - 2022-07-26
+- Initial creation.

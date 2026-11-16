@@ -2,17 +2,17 @@
 Credential Manager GUI
 Author: Gabriele Saronni
 
-PyQt5-based GUI for secure credential collection and pre-flight validation.
+PyQt5 window that collects the three passwords for the backup run and checks
+them before the backup starts. The backup tool cannot run without it.
 
 Features:
-    - Secure password entry (masked input)
-    - VPN connectivity check
-    - Device authentication pre-validation
-    - User-friendly error messaging
-    - Prevents execution on connection failures
+    - Masked password entry
+    - Reachability check of the backup server (ping, Windows syntax)
+    - Login test on one switch, one ISE node and the backup server
+    - Password fields cleared after a failed check
 
-This GUI ensures all credentials are valid before initiating backup operations,
-preventing partial failures and reducing troubleshooting time.
+The window closes only when every check passes. Closing it with the title bar
+button instead skips the checks, and the backup runs with whatever was typed.
 """
 
 import os
@@ -30,12 +30,13 @@ class MainWindow(QMainWindow):
     """
     Main GUI window for credential collection and validation.
     
-    Collects three sets of credentials:
-        1. Personal AD credentials (for most network devices)
-        2. ISE admin credentials (separate admin account)
-        3. Backup server credentials (Linux SFTP)
-    
-    Validates connectivity and authentication before allowing script to proceed.
+    Collects three passwords:
+        1. Personal account (user name from USERNAME; routers, switches, ASAs)
+        2. ISE admin account
+        3. Backup server account (Linux SFTP)
+
+    The Validate button checks reachability and logins, and closes the window
+    only if all of them pass.
     """
     
     def __init__(self):
@@ -103,8 +104,8 @@ class MainWindow(QMainWindow):
             2. Network device authentication (Nexus switch)
             3. ISE authentication (ISE appliance)
             4. Backup server authentication (Linux SFTP)
-        
-        Only proceeds if ALL checks pass. Clears passwords on failure.
+
+        Closes the window only if all checks pass. Clears passwords on failure.
         """
         personal_user = os.environ.get("USERNAME", "admin").lower()
         personal_psw = self.personal_psw_entry.text()

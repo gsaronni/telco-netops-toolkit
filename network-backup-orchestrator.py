@@ -2,25 +2,26 @@
 Network Device Backup Orchestrator
 Author: Gabriele Saronni
 
-Automated backup solution for multi-vendor network infrastructure.
-Supports Cisco Nexus, ASR900, ISE, ASA Firewall (multi-context), and Linux backup servers.
+Backs up Cisco device configurations (Nexus NX-OS, IOS routers, ISE, ASA
+multi-context) and uploads them by SFTP to a Linux backup server.
 
 Version History:
 - 20220405 v1.0   - Initial release
 - 20230120 v4.7   - Auto-discover username, fixed ASR900 timing issues with send_command_timing
 - 20230626 v4.8   - Added Ctrl+C exception handling, fixed devices with slow CLI response
-- 20230714 v4.9   - Removed GUI dependency for headless operation, added password validation
+- 20230714 v4.9   - Added password validation
 - 20230908 v5.0   - Fixed ISE timing issues with sleep delays for slow CLI responses
 
 Usage:
     python network-backup-orchestrator.py
 
 Features:
-    - Multi-vendor device support (Cisco NX-OS, IOS, ASA, ISE, Linux)
-    - Automated SFTP upload to backup server
-    - Configuration archival with date-based organization
-    - Pre-flight connection validation via GUI
-    - ASA multi-context backup support
+    - Cisco NX-OS, IOS, ISE and ASA (system context plus each security context)
+    - SFTP upload to a Linux backup server
+    - Date-stamped archive folders
+    - PyQt5 password window with pre-flight login checks; the window is
+      required, there is no headless mode
+    - Windows only: the backup path is built under C:\\Users\\<USERNAME>
 """
 
 import time
@@ -184,7 +185,9 @@ def asa_connection_handler(username, password, host, commands_system, timestamp,
     
     ASA firewalls support multiple security contexts (virtual firewalls).
     This function backs up the system configuration and each individual context.
-    
+    It also runs write memory in the system context and in every security
+    context, so a backup saves each running configuration to startup.
+
     Args:
         username: SSH username
         password: SSH password
@@ -254,10 +257,10 @@ def main(timestamp, base_path):
     
     Workflow:
         1. Create folder structure
-        2. Launch GUI for credential input
+        2. Launch GUI for password input and pre-flight checks
         3. Connect to devices and retrieve configurations
-        4. Upload backups to remote server
-        5. Archive old backups
+        4. Upload today's backups to the backup server
+        5. Move today's backups into a date-stamped archive folder
     
     Args:
         timestamp: datetime object for file naming

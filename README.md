@@ -1,196 +1,116 @@
 # Network Automation Tools
 
-Production automation tools for enterprise network operations. Built to solve real operational challenges in multi-vendor environments.
+Scripts written while operating a production network (Cisco, F5 BIG-IP, Linux) for one customer environment. Device names and addresses in this repository are fictional; they follow the same naming scheme as the [docs-as-code-showcase](https://github.com/gsaronni/docs-as-code-showcase) runbook, so a device has the same name in both repositories.
 
-[![Python 3.7+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Bash](https://img.shields.io/badge/bash-5.0+-green.svg)](https://www.gnu.org/software/bash/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Projects
+## Contents
 
-## At a Glance
+| Path | What it does | Runs on |
+|------|--------------|---------|
+| `f5-patching-automation.sh` | Lists, disables or enables the F5 LTM nodes of one patch group (T71, T72, T73) with tmsh, across four partitions | Bash on the BIG-IP itself |
+| `network-backup-orchestrator.py`, `credential_manager_gui.py` | Backs up Cisco device configurations and uploads them by SFTP to a Linux backup server | Windows, Python 3.10+, a desktop session (PyQt5 window) |
+| `mail_template.ps1` | Opens Outlook drafts announcing the start and end of a patching window | Windows with Outlook |
+| `searchOnExcel.ps1` | Looks up IP addresses in every sheet of an Excel workbook | Windows with Excel |
+| `ansible-backup/` | Learning port of the backup tool to Ansible; incomplete | Ansible control node |
 
-**Two production automation tools solving real operational problems:**
+Clone:
 
-| Tool | Problem Solved | Impact | Status |
-|------|----------------|--------|--------|
-| **F5 BigIP Automation** | Manual node management during patching (50 min/month) | **98% time reduction** (50 min → <1 min) | Production-stable v1.6 |
-| **Network Backup Orchestrator** | Manual multi-vendor config backups | Automated backup for 6 device types, zero manual intervention | Production-hardened v5.0 |
-
-**Technology Stack:** Bash, Python 3.7+, Netmiko, Paramiko, F5 iControl, PyQt5  
-**Environment:** Enterprise multi-vendor (Cisco, F5, Linux)
-
-### 🔧 F5 BigIP Patching Automation
-
-**Problem:** Monthly patching required manually disabling/enabling 30+ F5 LTM nodes across three partitions (BE-PRO, BE-OMT, FE-DMZ). Process took 50+ minutes, high risk of human error affecting production traffic.
-
-**Solution:** Interactive bash automation using F5 tmsh API for bulk node state management. Handles three distinct patching scenarios with built-in validation.
-
-**Impact:**
-- ⏱️ **98% time reduction**: 50 minutes → <1 minute per maintenance window
-- 🎯 **Zero errors**: Eliminated manual mistakes in 18+ months production use
-- 📊 **Annual savings**: ~20 engineer-hours
-
-**Technical Details:**
-- **Technology**: Bash 5.0+, F5 tmsh CLI, iControl REST API
-- **Architecture**: Interactive CLI → Partition selection → Bulk node operations → Validation
-- **Production Status**: v1.6 (stable, actively maintained)
-
-📖 [View detailed documentation](BIG-IP-F5_LTM_nodes.md)
----
-
-### 🌐 Network Backup Orchestrator
-
-**Problem:** Manual configuration backups across 6 different device types (Cisco NX-OS, IOS, ASA multi-context, ISE, Linux) with inconsistent processes and no centralized storage.
-
-**Solution:** Python orchestration tool with unified interface for multi-vendor backups, pre-flight validation, and automated SFTP archival.
-
-**Impact:**
-- 🔄 **Automated daily backups**: Zero manual intervention
-- 🛡️ **Pre-flight validation**: Catches credential/connectivity issues before backup runs
-- 📦 **Multi-context ASA support**: Handles complex firewall configurations (most tools fail here)
-
-**Technical Details:**
-- **Technology**: Python 3.7+, Netmiko, Paramiko, PyQt5
-- **Supported Platforms**: 
-  - Cisco: NX-OS, IOS, ASA (including multi-context), ISE
-  - Linux: SSH-based config retrieval
-- **Architecture**: GUI credential management → Device discovery → Sequential backup execution → SFTP upload → Local archival
-
-**Evolution Timeline:**
-- **v1.0** (2020): Basic single-vendor backup
-- **v2.0** (2021): Added multi-vendor support (Nexus, IOS)
-- **v3.0** (2021): ASA multi-context handling (solved complex partition logic)
-- **v4.0** (2022): Pre-flight validation system
-- **v5.0** (2023): SFTP automation + error recovery
-
-*Evolved through 3 years of production use, handling real operational failures and edge cases.*
-
-📖 [View detailed documentation](network-backup.md)
----
-
-## Quick Start
-
-### Prerequisites
-- Python 3.7+
-- Network access to target devices
-- SSH credentials for devices
-
-### Installation
-
-**Clone repository:**
 ```bash
-git clone https://github.com/gsaronni/network-automation-toolkit.git
-cd network-automation-toolkit
+git clone https://github.com/gsaronni/network-automation.git
+cd network-automation
 ```
 
-**Install dependencies:**
-```bash
-pip install -r requirements.txt
-```
+## F5 patching automation
 
-### F5 Patching Automation
+`f5-patching-automation.sh`, v1.6. In the runbook it is the node switch-off and switch-on step of [Patching Activity](https://gsaronni.github.io/docs-as-code-showcase/fastdelivery/f5-big-ip.html#_patching_activity), where it appears under its earlier name `t7_all-main_v01.3.sh`.
+
+During a patching window, the LTM nodes of the servers being patched must be taken out of service and put back afterwards. Done by hand with tmsh this took about 50 minutes; the script does it in under 1 minute.
+
+The script calls the tmsh CLI directly (`tmsh -c "cd /<partition>; modify /ltm node <node> session user-disabled"`), so it runs in a Bash shell on the BIG-IP. It works on four administrative partitions: `F5_BE-PRO`, `F5_BE-OMT`, `F5_FE-DMZ` and `F5_FE-DMZ-ext`. The node list of each patch group is hard-coded in its function (`t71-switcher`, `t72-switcher`, `t73-switcher`).
+
+Actions:
+
+- `l` list: prints the node and session lines of each node in the group.
+- `d` disable: sets each node to `session user-disabled`.
+- `e` enable: sets each node to `session user-enabled`.
+
+Interactive use, a menu asks for the patch group (1, 2, 3) and then the action:
+
 ```bash
 chmod +x f5-patching-automation.sh
 ./f5-patching-automation.sh
 ```
 
-**Interactive prompts guide you through:**
-1. Partition selection (BE-PRO/BE-OMT/FE-DMZ)
-2. Patching scenario (Windows/Linux/Firewall)
-3. Automated node disable → patching window → re-enable
+Non-interactive use, for example from cron:
 
-### Network Backup Orchestrator
-
-⚠️ **Note:** Script uses Windows-specific paths. Linux/Mac users need to modify `path` variable in script.
 ```bash
+./f5-patching-automation.sh 1 d    # patch group T71, disable
+./f5-patching-automation.sh 1 e    # patch group T71, enable
+```
+
+The script validates its input but does not check the result of each tmsh command; list the group after a change to confirm it.
+
+Background: [BIG-IP-F5_LTM_nodes.md](BIG-IP-F5_LTM_nodes.md).
+
+## Network backup orchestrator
+
+`network-backup-orchestrator.py` with `credential_manager_gui.py`, v5.0. Requires Python 3.10 or newer: the code itself needs 3.7 (`subprocess.run(capture_output=...)`), and current Netmiko releases need 3.10.
+
+```bash
+pip install -r requirements.txt
 python network-backup-orchestrator.py
 ```
 
-**First-run prompts:**
-- Your network username (auto-detected from `$USERNAME`)
-- Device passwords (hidden input via `getpass`)
-- Backup server credentials
+A run does the following, in order:
 
-**Output locations:**
-- Fresh backups: `~/Documents/backupFastDelivery/todayBackup/`
-- Archives: `~/Documents/backupFastDelivery/backupArchive/{date}/`
-- Logs: `~/Documents/backupFastDelivery/logs/`
+1. Creates `logs`, `todayBackup` and `backupArchive` under `C:\Users\<USERNAME>\Documents\NetworkBackups`. The path is hard-coded and built from the Windows `USERNAME` variable.
+2. Opens a PyQt5 window that asks for three passwords: the personal account (user name taken from `USERNAME`, lower-cased), the ISE `admin` account and the backup server account. There is no headless mode; the window is required. The "Validate & Start Backup" button pings the backup server (Windows `ping -n` syntax), then logs in to one switch, one ISE node and the backup server. On a failure it clears the fields; on success it closes the window. Closing the window with its title bar button skips these checks and the run continues.
+3. Backs up, one device at a time: IOS routers, Nexus switches (NX-OS), ISE nodes (with a 10-second wait after each command, for their slow CLI), then ASA firewalls. For each ASA it saves the system context and then each security context (`SYSTEM`, `MGMT`, `DMZ`, `BACKEND`, `FRONTEND`). It runs `write memory` in the system context and in every security context, so a backup also saves each running configuration.
+4. Uploads every file in `todayBackup` by SFTP (Paramiko) to the backup server's login directory, prints the remote listing, and writes the Paramiko log to `logs`.
+5. Moves the files from `todayBackup` to `backupArchive\YYYYMMDD_backup`.
 
-**Supported devices (auto-detected):**
-- Cisco Nexus switches (NX-OS)
-- Cisco ASR routers (IOS)
-- Cisco ISE appliances
-- Cisco ASA firewalls (multi-context)
-- Linux servers via SSH
+Files are named `<hostname>_YYYYMMDD_HHMMSS.cfg`, and `<hostname>_<context>_YYYYMMDD_HHMMSS.cfg` for ASA contexts.
 
-## Philosophy
+A device that fails is reported and the run moves on to the next one. A failed upload ends the run, and the files stay in `todayBackup`.
 
-These tools embody practical network automation:
-- **Solve real problems**: Built for actual operational pain points
-- **Production-ready**: Battle-tested in enterprise environments
-- **Maintainable**: Clear code, comprehensive documentation
-- **Progressive**: Simple solutions first, complexity only when needed
+The device inventory, device groups, contexts and the backup server are hard-coded in `main()` (fictional `10.0.0.x` addresses); edit them there.
 
-## Docker Deployment
+Background: [network-backup.md](network-backup.md).
 
-### Build and Run with Docker
-```bash
-# Build image
-docker build -t network-backup-orchestrator .
+## PowerShell helpers
 
-# Run container (interactive mode for credential input)
-docker run -it \
-  -v $(pwd)/backups:/backups \
-  --network host \
-  network-backup-orchestrator
+### mail_template.ps1
+
+Creates two Outlook drafts for a patching window, "Start" (22:00) and "End" (02:00), each listing the nodes of the chosen patch group. The drafts are displayed, not sent. Set `$recipients` and `$cc` at the bottom of the script first.
+
+```powershell
+.\mail_template.ps1 2 2710    # patch group 2, date 27/10 of the current year
+.\mail_template.ps1 2         # patch group 2, today's date
+.\mail_template.ps1           # prompts for the patch group
 ```
 
-### Using Docker Compose
-```bash
-# Start service
-docker-compose up
+### searchOnExcel.ps1
 
-# Run one-time backup
-docker-compose run --rm network-backup
-```
+Set `$excelPath` to the full path of the workbook (and `$excelFileName`, used only in messages), then run the script and paste IP addresses one per line, ending with a blank line. For each address it reports every cell whose whole content matches, with sheet, cell and row, across all sheets. Excel must be installed; the script drives it through COM.
 
-**Benefits:**
-- Consistent Python environment across systems
-- No local dependency installation required
-- Isolated execution environment
-- Easy deployment to backup servers
+## ansible-backup (learning port, incomplete)
 
+A port of the backup tool to Ansible playbooks, written as practice. It is not finished: ASA, ISE and the SFTP upload are not implemented, and it does not run as committed. See [ansible-backup/README.md](ansible-backup/README.md).
 
-## Known Limitations & Future Roadmap
+## Known limitations
 
-### Current Constraints
-- **F5 Script**: 
-  - Bash-based (not idempotent, no state tracking)
-  - No automated testing (relies on manual validation)
-  - Single-BigIP focus (no HA pair handling)
-  
-- **Python Backup Tool**:
-  - PyQt5 GUI requires display (not server-friendly)
-  - No containerization (environment-dependent)
-  - Credentials in GUI storage (not vault-integrated)
+- Node lists, device inventory and paths are hard-coded in the scripts.
+- The backup tool runs on Windows only and needs a desktop session for its window.
+- Passwords are typed at every run; there is no secrets store.
+- The ASA backup also runs `write memory`, which changes the device's startup configuration.
+- No automated tests.
 
-### Planned Improvements
-- [ ] **F5 Automation**: Migrate to Ansible playbook using `f5networks.f5_modules` collection
-- [ ] **Python Tool**: Containerize with Docker for reproducible environments
-- [ ] **Testing**: Add pytest suite with mocked device responses
-- [ ] **CI/CD**: GitHub Actions workflow for automated testing
-- [ ] **Secrets Management**: Integrate with HashiCorp Vault / Ansible Vault
+## Licence
 
-*These tools reflect practical solutions built for immediate operational needs. Modernization efforts focus on current best practices while maintaining production stability.*
+MIT, see [LICENSE](LICENSE).
 
 ## Author
 
-**Gabriele Saronni**  
-Network Engineer & Automation Developer
-
-[LinkedIn](https://linkedin.com/in/gabriele-s-54514173) | [GitHub](https://github.com/gsaronni)
-
----
-
-*Tools developed from real operational experience in enterprise telecommunications infrastructure.*
+Gabriele Saronni, network engineer. [LinkedIn](https://linkedin.com/in/gabriele-s-54514173) | [GitHub](https://github.com/gsaronni)

@@ -1,31 +1,29 @@
-# Ansible Backup - Learning Project
+# ansible-backup (learning port, incomplete)
 
-Converting the Python backup orchestrator to Ansible playbooks as practice.
+A port of the Python backup orchestrator (`../network-backup-orchestrator.py`) to Ansible, written as practice: Ansible syntax, network modules, and an inventory file in place of addresses hard-coded in the script.
 
-## Why
+## Files
 
-- Learn Ansible syntax and network modules
-- Practice infrastructure-as-code patterns
-- Understand inventory management vs hardcoded IPs
-
-## Install
-```bash
-pip install ansible
-ansible-galaxy collection install cisco.ios
-```
-
-## Run
-```bash
-ansible-playbook -i inventory.ini backup-configs.yml --ask-pass
-```
+- `inventory.ini`: device groups (Nexus switches, ASR routers, ISE nodes, ASA firewalls, backup server). Names and addresses are fictional and match the docs-as-code-showcase runbook.
+- `backup-configs.yml`: fetches the running configuration of the Nexus switches and ASR routers into `<backup_path>/<date>/`; on IOS devices it first copies the running configuration to startup.
+- `test-connectivity.yml`: gathers minimal facts from every device except the backup server and reports which ones answered.
 
 ## Status
 
-Basic Nexus/ASR backup works. ASA multi-context and SFTP upload not implemented yet.
+Incomplete, and it does not run as committed:
 
-## Comparison to Python Script
+- The inventory sets no `ansible_connection` or `ansible_network_os`, which the `cisco.ios` modules need.
+- `backup_path` is not defined anywhere; it must be passed on the command line.
+- ASA, ISE and the SFTP upload are not implemented. The upload play is a placeholder that only prints a message.
 
-**Python:** 400 lines, hardcoded IPs, custom error handling, PyQt5 GUI  
-**Ansible:** ~50 lines, inventory file, built-in modules, CLI prompts
+## Run
 
-Both approaches work. This is just demonstrating Ansible knowledge for portfolio.
+```bash
+pip install ansible
+ansible-galaxy collection install cisco.ios
+ansible-playbook -i inventory.ini backup-configs.yml --ask-pass -e backup_path=./backups
+```
+
+## Compared with the Python tool
+
+The Python tool is 354 lines with hard-coded addresses, its own error handling and a PyQt5 password window. The playbook is 48 lines, takes devices from the inventory, uses the collection's modules and asks for the password with `--ask-pass`.

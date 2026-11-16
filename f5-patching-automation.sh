@@ -8,10 +8,13 @@
 # Created: 2022-07-26
 # 
 # Reduces patching preparation time from 50 minutes to under 1 minute by
-# automating repetitive tmsh commands across multiple F5 partitions.
+# automating repetitive tmsh CLI commands across four F5 partitions
+# (F5_BE-PRO, F5_BE-OMT, F5_FE-DMZ, F5_FE-DMZ-ext). Runs on the BIG-IP.
 #
 # Usage: ./f5-patching-automation.sh
 #        Follow interactive prompts to select patching scenario and action
+#        ./f5-patching-automation.sh <1|2|3> <l|d|e>
+#        Non-interactive: scenario and action (list, disable, enable)
 ################################################################################
 
 # Version History
