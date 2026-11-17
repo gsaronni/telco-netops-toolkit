@@ -196,17 +196,17 @@ t73-switcher() {
 main() {
   while true; do
     echo ""
-    read -p "Which patching scenario? [1/2/3/Q to quit] >> " pick
+    read -r -p "Which patching scenario? [1/2/3/Q to quit] >> " pick
     case $pick in
       1|2|3)
         while true; do
           echo ""
-          read -p "Action: [L]ist / [D]isable / [E]enable / [Q]uit >> " answer
+          read -r -p "Action: [L]ist / [D]isable / [E]enable / [Q]uit >> " answer
           case $answer in
             [edlEDL]*)
               # Convert to lowercase for consistency
               answer=$(echo "$answer" | tr '[:upper:]' '[:lower:]')
-              t7$pick-switcher
+              t7"$pick"-switcher
               ;;
             [Qq]*)
               break
@@ -262,7 +262,7 @@ if [[ $# -eq 2 ]]; then
   echo "Started: $(date '+%Y-%m-%d %H:%M:%S')"
   echo "Scenario: T7${pick}, Action: ${answer}"
   echo "=========================================="
-  t7$pick-switcher
+  t7"$pick"-switcher
   echo "Completed: $(date '+%Y-%m-%d %H:%M:%S')"
   echo ""
   exit 0

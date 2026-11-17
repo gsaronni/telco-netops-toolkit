@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: no-control-chars
+        name: reject control characters
+        language: pygrep
+        entry: '[\x00-\x08\x0b\x0c\x0e-\x1f]'
+        files: '\.(md|py|sh|ps1|toml|ya?ml|txt|ini)$'

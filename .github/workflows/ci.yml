@@ -1,0 +1,21 @@
+name: ci
+on:
+  # Branch pushes only: pushing a tag must not rerun CI against an old commit.
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: compileall
+        run: python -m compileall -q .
+      - name: ruff
+        run: pipx run ruff check .
+      - name: shellcheck
+        run: shellcheck --severity=warning f5-patching-automation.sh

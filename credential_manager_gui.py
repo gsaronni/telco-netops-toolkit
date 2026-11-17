@@ -23,7 +23,6 @@ from PyQt5.QtWidgets import (
     QPushButton, QMessageBox, QVBoxLayout, QWidget
 )
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt
 
 
 class MainWindow(QMainWindow):
@@ -211,7 +210,6 @@ class MainWindow(QMainWindow):
             )
             self.clear_password_fields()
         else:
-            success_text = "\n".join(success_messages)
             print("\n" + "="*50)
             print("All pre-flight checks passed!")
             print("="*50)
