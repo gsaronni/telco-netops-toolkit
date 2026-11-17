@@ -67,7 +67,7 @@ A run does the following, in order:
 
 1. Creates `logs`, `todayBackup` and `backupArchive` under `C:\Users\<USERNAME>\Documents\NetworkBackups`. The path is hard-coded and built from the Windows `USERNAME` variable.
 2. Opens a PyQt5 window that asks for three passwords: the personal account (user name taken from `USERNAME`, lower-cased), the ISE `admin` account and the backup server account. There is no headless mode; the window is required. The "Validate & Start Backup" button pings the backup server (Windows `ping -n` syntax), then logs in to one switch, one ISE node and the backup server. On a failure it clears the fields; on success it closes the window. Closing the window with its title bar button skips these checks and the run continues.
-3. Backs up, one device at a time: IOS routers, Nexus switches (NX-OS), ISE nodes (with a 10-second wait after each command, for their slow CLI), then ASA firewalls. For each ASA it saves the system context and then each security context (`SYSTEM`, `MGMT`, `DMZ`, `BACKEND`, `FRONTEND`). It runs `write memory` in the system context and in every security context, so a backup also saves each running configuration.
+3. Backs up, one device at a time: IOS routers, Nexus switches (NX-OS), ISE nodes (with a 10-second wait after each command, for their slow CLI), then ASA firewalls. For each ASA it first writes a system-context file, which holds only the output of `terminal pager 0` and `write memory`, then saves the running configuration of each security context (`SYSTEM`, `MGMT`, `DMZ`, `BACKEND`, `FRONTEND`) to its own file. It runs `write memory` in the system context and in every security context, so a backup also saves each running configuration.
 4. Uploads every file in `todayBackup` by SFTP (Paramiko) to the backup server's login directory, prints the remote listing, and writes the Paramiko log to `logs`.
 5. Moves the files from `todayBackup` to `backupArchive\YYYYMMDD_backup`.
 
@@ -105,6 +105,7 @@ A port of the backup tool to Ansible playbooks, written as practice. It is not f
 - The backup tool runs on Windows only and needs a desktop session for its window.
 - Passwords are typed at every run; there is no secrets store.
 - The ASA backup also runs `write memory`, which changes the device's startup configuration.
+- The ASA system context's running configuration is not captured; the per-context files are.
 - No automated tests.
 
 ## Licence

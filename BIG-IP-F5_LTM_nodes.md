@@ -1,151 +1,148 @@
-# F5 BigIP Patching Automation
+# F5 BIG-IP Patching Automation
 
-**Reducing monthly maintenance overhead from 50 minutes to under 1 minute**
+**Node switch-off and switch-on for a patching window: from about 50 minutes by hand to under 1 minute**
 
-## The Problem
+Background for `f5-patching-automation.sh`. How to run it is in the [README](README.md#f5-patching-automation).
 
-In a major telecommunications infrastructure environment, monthly patching windows required manual manipulation of 30+ F5 BigIP LTM nodes across four separate partitions (BE-PRO, BE-OMT, FE-DMZ, FE-DMZ-ext). 
+## The problem
 
-**The manual process:**
-- **22:00**: Disable nodes (50 minutes of tmsh commands)
-- **22:00-02:00**: Patching window
-- **02:00**: Re-enable nodes (another 50 minutes)
+In a telco data-centre network run as a managed service, servers behind F5 BIG-IP LTM load balancers were patched in three patch groups (T71, T72, T73). Before a group was patched, its LTM nodes had to be taken out of service; after patching, they had to be put back.
 
-This meant operations engineers spent **1 hour 40 minutes per month** typing repetitive, error-prone tmsh commands during off-hours. One typo could impact service availability.
+The nodes sit in four administrative partitions (`F5_BE-PRO`, `F5_BE-OMT`, `F5_FE-DMZ`, `F5_FE-DMZ-ext`). The three groups together cover 45 partition and node entries (37 distinct nodes, some of which appear in more than one partition).
 
-## The Solution
+**The manual process, per window:**
+- **22:00**: disable the group's nodes, one tmsh command per node and partition (about 50 minutes)
+- **22:00 to 02:00**: patching window
+- **02:00**: enable the nodes again (about 50 minutes more)
 
-Automated the entire node management workflow with a bash script leveraging F5's tmsh CLI. The script handles all three patching scenarios (T71, T72, T73) with:
-- Interactive menu-driven interface
-- Bulk enable/disable operations
-- Node status verification
-- Multi-partition support
+Each node meant typing a partition and a node name by hand, late at night, on a production load balancer.
 
-**Time reduction: 50 minutes → under 60 seconds**
+## The solution
 
-### Operational Benefits
+A Bash script that runs on the BIG-IP and calls tmsh for every node of the chosen patch group:
+- Interactive menu, or two command-line arguments for non-interactive use (for example from cron)
+- List, disable or enable all nodes of one group in one step
+- All four partitions handled in the same run
 
-- **Time savings**: ~20 hours annually per operations team
-- **Error reduction**: Eliminated manual typing errors during critical windows
-- **Consistency**: Standardized process across all patching scenarios
-- **Reliability**: Repeatable, testable workflow
-- **Knowledge transfer**: Simple enough for non-experts to execute
+**Time: about 50 minutes by hand, under 1 minute with the script.**
 
-## Technical Details
+What it changes in practice:
+- The node lists are written once, in the script, instead of being typed at every window.
+- Every group is handled with the same commands in the same order.
+- Anyone with tmsh access on the BIG-IP can run it from the menu.
 
-### Architecture
+## Technical details
 
-The script manages F5 nodes across multiple partitions using tmsh (Traffic Management Shell):
+### Partitions
 
 ```
-F5_BE-PRO       → Backend Production nodes
-F5_BE-OMT       → Backend OMT nodes  
-F5_FE-DMZ       → Frontend DMZ nodes
-F5_FE-DMZ-ext   → External DMZ nodes
+F5_BE-PRO       Backend production nodes
+F5_BE-OMT       Backend OMT nodes
+F5_FE-DMZ       Frontend DMZ nodes
+F5_FE-DMZ-ext   External DMZ nodes
 ```
 
-### Supported Operations
+### Actions
 
-- **List**: Display current node session states
-- **Disable**: Set nodes to `user-disabled` (graceful drain)
-- **Enable**: Set nodes to `user-enabled` (return to service)
+- **List** (`l`): prints the node and session lines of each node in the group
+- **Disable** (`d`): sets each node to `session user-disabled` (no new sessions; existing connections continue)
+- **Enable** (`e`): sets each node to `session user-enabled` (back in service)
 
-### Patching Scenarios
+### Patch groups
 
-Three distinct patching scenarios (T71, T72, T73) with different node groupings:
-- Each scenario targets specific nodes based on infrastructure topology
-- Supports validation before and after patching
-- Handles routing group percentages for multi-homed nodes
+Each patch group (T71, T72, T73) has its own function with its own hard-coded node lists, one list per partition:
+
+| Group | Function | Node entries |
+|-------|----------|--------------|
+| T71 | `t71-switcher` | 16 |
+| T72 | `t72-switcher` | 16 (one node listed twice in `F5_FE-DMZ-ext`) |
+| T73 | `t73-switcher` | 14 |
+
+The script does not read the result of each tmsh command. To confirm a change, run the list action on the group afterwards.
 
 ## Usage
 
 ### Prerequisites
 
-- F5 BigIP with tmsh CLI access
-- Bash shell environment
-- Appropriate permissions for node modification
+- A BIG-IP with Bash and tmsh access
+- Permission to modify LTM nodes in the four partitions
 
-### Running the Script
+### Running the script
 
 ```bash
 chmod +x f5-patching-automation.sh
-./f5-patching-automation.sh
+./f5-patching-automation.sh          # interactive menu
+./f5-patching-automation.sh 1 d      # T71, disable, no prompts
 ```
 
-### Interactive Workflow
+### Interactive session
 
 ```
 Which patching scenario? [1/2/3/Q to quit] >> 1
 Action: [L]ist / [D]isable / [E]enable / [Q]uit >> l
 === Processing T71 Patching Scenario ===
-[Node status output]
+[node and session lines]
 
 Action: [L]ist / [D]isable / [E]enable / [Q]uit >> d
 === Processing T71 Patching Scenario ===
-[Nodes disabled]
 
 Action: [L]ist / [D]isable / [E]enable / [Q]uit >> q
 ```
 
-## Code Highlights
+## Code notes
 
-### Clean Abstraction
+### One function per patch group
 
-Each patching scenario has a dedicated function:
 ```bash
-t71-switcher()  # Handles T71 patching scenario
-t72-switcher()  # Handles T72 patching scenario  
-t73-switcher()  # Handles T73 patching scenario
+t71-switcher()  # T71 nodes
+t72-switcher()  # T72 nodes
+t73-switcher()  # T73 nodes
 ```
 
-### Error Prevention
+### Input checks
 
-- Input validation for scenario and action selection
-- Consistent command structure reduces typos
-- Dry-run capability (list before modify)
+- Interactive mode accepts only 1, 2, 3 or Q for the group and L, D, E or Q for the action.
+- Non-interactive mode accepts exactly two arguments, a group (1 to 3) and an action (l, d, e), and exits with status 1 otherwise.
+- The list action shows the current state before a change; it is a separate step, not a dry run of disable or enable.
 
-### Maintainability
+### Readability
 
-- Clear variable naming (`f5BePro`, `f5BeOmt`, etc.)
-- Comprehensive comments and documentation
-- Version history tracking
+- Variable names follow the partition (`f5BePro`, `f5BeOmt`, and so on).
+- A comment block before each function and a version history in the script header.
 
-## Lessons Learned
+## Lessons learned
 
-### What Worked
+1. **Simple was enough**: Bash and tmsh on the device itself, nothing to install.
+2. **A menu lowers the bar**: the person on shift picks a number and a letter instead of typing node names.
+3. **Incremental development**: the first versions did not cover all three groups; v1.3 added the rest.
 
-1. **Simple is better**: Bash was the right tool for this job—no need for complex frameworks
-2. **User-friendly CLI**: Operations team adopted it immediately because it was intuitive
-3. **Incremental development**: Started with one scenario, expanded to three
-4. **Real-world testing**: The "bar deployment" proved the interface was truly simple
+### Version history
 
-### Evolution
+From the script header:
 
-- **v0.1.0**: Initial single-scenario implementation
-- **v0.1.1**: Added for loops to reduce code repetition
-- **v1.3**: Expanded to all three patching scenarios
-- **v1.4**: Production-ready with full error handling
+- **v0.1.0** (2022-07-26): initial creation
+- **v0.1.1** (2022-07-28): for loops to reduce repetition
+- **v0.1.2** (2022-07-28): list and disable logic refactored
+- **v1.3** (2022-08-01): support for all three patching scenarios
+- **v1.4** (2022-08-01): T71, T72 and T73 workflows completed
+- **v1.5** (2025-09-30): code and comments tidied
+- **v1.6** (2025-10-22): non-interactive mode for cron
 
-## Future Enhancements
+In the companion runbook ([docs-as-code-showcase](https://github.com/gsaronni/docs-as-code-showcase)) the script appears under its earlier name, `t7_all-main_v01.3.sh`.
 
-Potential improvements for extended functionality:
+## Possible improvements
 
-- [ ] Add pre-flight checks (verify node counts before disabling)
-- [ ] Implement rollback on partial failures
-- [ ] Generate execution logs for audit trail (Half done. Can log timestamps redirecting output)
-- [x] Add support for scheduled automation (cron integration)
-- [ ] Extend to additional F5 partitions as infrastructure grows
+- [ ] Pre-flight check: compare the node count with the expected one before disabling
+- [ ] Check the result of each tmsh command and stop or roll back on a partial failure
+- [ ] Execution log for an audit trail (today: redirect the output to a file)
+- [x] Scheduled runs (non-interactive mode, v1.6)
+- [ ] Node lists in a data file instead of the script
 
-## License
+## Licence
 
-MIT License - Feel free to adapt for your own F5 automation needs
+MIT, see [LICENSE](LICENSE).
 
 ## Author
 
-**Gabriele Saronni**  
-Network Engineer & Automation Enthusiast  
+**Gabriele Saronni**, network engineer.
 [LinkedIn](https://linkedin.com/in/gabriele-s-54514173) | [GitHub](https://github.com/gsaronni)
-
----
-
-*Built with practical experience from managing critical telecommunications infrastructure. Deployed in production environments managing 99.9%+ service availability.*
